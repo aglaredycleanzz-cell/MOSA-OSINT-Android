@@ -100,6 +100,9 @@ private fun MosaApp() {
         result = null
         links = emptyList()
         consent = false
+        if (next == Module.REPORT) {
+            report = prefs.getString("last_report", "") ?: ""
+        }
     }
 
     MaterialTheme(colorScheme = darkColorScheme(
@@ -304,6 +307,7 @@ private fun InputScreen(
     onRun: () -> AnalysisResult
 ) {
     val ctx = LocalContext.current
+    val prefs = remember(ctx) { ctx.getSharedPreferences("mosa_osint", Context.MODE_PRIVATE) }
     var latest by remember(title) { mutableStateOf<AnalysisResult?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle(title, description)
@@ -328,7 +332,19 @@ private fun InputScreen(
             }
         }
         Button(
-            onClick = { latest = onRun() },
+            onClick = {
+                val computed = onRun()
+                latest = computed
+                val reportText = buildString {
+                    appendLine("MOSA OSINT REPORT")
+                    appendLine("Module: $title")
+                    appendLine("Result: ${computed.heading}")
+                    computed.lines.forEach { appendLine("- $it") }
+                    computed.caution?.let { appendLine("Caution: $it") }
+                    appendLine("Generated locally on this device.")
+                }
+                prefs.edit().putString("last_report", reportText).apply()
+            },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Bg),
             shape = RoundedCornerShape(12.dp)
