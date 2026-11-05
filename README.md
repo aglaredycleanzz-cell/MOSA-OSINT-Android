@@ -67,3 +67,4 @@ See:
 - [Government Edition scope](docs/GOVERNMENT_EDITION_SCOPE.md)
 - [Product roadmap](docs/ROADMAP.md)
 - [Authorized WhatsApp lab](docs/AUTHORIZED_WHATSAPP_LAB.md)
+- [WhatsApp Share to MOSA intake](docs/WHATSAPP_SHARE_INTAKE.md)
