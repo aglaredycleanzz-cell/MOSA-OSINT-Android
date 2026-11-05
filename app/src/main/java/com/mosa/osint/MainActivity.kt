@@ -49,6 +49,7 @@ private enum class Module(val title: String, val subtitle: String) {
     BUSINESS("الأعمال", "البحث عن بيانات الأعمال العامة"),
     WHATSAPP("واتساب فورنزكس", "تحليل تصدير المحادثات محلياً"),
     DEVICE("فحص الجهاز", "تقييم أولي للهاتف المضبوط"),
+    CUSTODY("سلسلة الحيازة", "سجل أحداث الأدلة المحلية"),
     PRIVACY("الخصوصية", "قائمة حماية حسابك"),
     REPORT("التقارير", "آخر نتيجة محفوظة")
 }
@@ -73,6 +74,7 @@ private fun MosaApp() {
     var result by remember { mutableStateOf<AnalysisResult?>(null) }
     var links by remember { mutableStateOf<List<SearchLink>>(emptyList()) }
     var report by remember { mutableStateOf(prefs.getString("last_report", "") ?: "") }
+    var custodyLog by remember { mutableStateOf(prefs.getString("custody_log", "") ?: "") }
     val privacyItems = listOf(
         "تفعيل التحقق بخطوتين في واتساب",
         "مراجعة الأجهزة المرتبطة وتسجيل الخروج من غير المعروف",
@@ -94,6 +96,35 @@ private fun MosaApp() {
     fun saveReport(text: String) {
         report = text
         prefs.edit().putString("last_report", text).apply()
+    }
+
+    fun recordCaseEvent(text: String, action: String) {
+        saveReport(text)
+        fun field(prefix: String): String = text.lineSequence()
+            .firstOrNull { it.startsWith(prefix, ignoreCase = true) }
+            ?.substringAfter(":")
+            ?.trim()
+            ?.replace("|", "/")
+            ?.replace("\n", " ")
+            ?.take(180)
+            ?: "not recorded"
+
+        val timestamp = java.text.SimpleDateFormat(
+            "yyyy-MM-dd HH:mm:ss", java.util.Locale.US
+        ).format(java.util.Date())
+        val event = listOf(
+            timestamp,
+            "Case=" + field("Case reference:"),
+            "Action=" + action,
+            "File=" + field("File:"),
+            "SHA256=" + field("Source SHA-256:").let { hash ->
+                if (hash == "not recorded") field("SHA-256:") else hash
+            }
+        ).joinToString(" | ")
+        custodyLog = (listOf(event) + custodyLog.lineSequence().filter { it.isNotBlank() }.toList())
+            .take(300)
+            .joinToString("\n")
+        prefs.edit().putString("custody_log", custodyLog).apply()
     }
 
     fun resetModule(next: Module) {
@@ -267,8 +298,9 @@ private fun MosaApp() {
                             }
                         }
                     }
-                    Module.WHATSAPP -> WhatsAppForensicsScreen(onReportGenerated = ::saveReport)
-                    Module.DEVICE -> DeviceTriageScreen(onReportGenerated = ::saveReport)
+                    Module.WHATSAPP -> WhatsAppForensicsScreen(onReportGenerated = { text -> recordCaseEvent(text, "WhatsApp export analyzed") })
+                    Module.DEVICE -> DeviceTriageScreen(onReportGenerated = { text -> recordCaseEvent(text, "Device triage documented") })
+                    Module.CUSTODY -> ChainOfCustodyScreen(events = custodyLog, onCopy = { copyText(context, custodyLog) })
                     Module.PRIVACY -> PrivacyScreen(items = privacyItems, checked = checked) { index, value ->
                         checked[privacyItems[index]] = value
                         prefs.edit().putBoolean("privacy_$index", value).apply()
@@ -277,7 +309,7 @@ private fun MosaApp() {
                 }
 
                 if (resultForModule(module, result = null) == null) { /* keep layout stable */ }
-                if (module !in listOf(Module.HOME, Module.PRIVACY, Module.REPORT)) {
+                if (module !in listOf(Module.HOME, Module.PRIVACY, Module.REPORT, Module.CUSTODY)) {
                     // The result is stored by the module input surface through its callback.
                     CurrentResultHost(
                         result = result,
@@ -420,7 +452,7 @@ private fun Header() {
             Text("DIGITAL FORENSICS WORKSPACE", color = Muted, fontSize = 9.sp, letterSpacing = 1.sp)
         }
         Surface(color = Color(0xFF17332F), shape = RoundedCornerShape(50)) {
-            Text("v1.1", color = Accent, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp))
+            Text("v1.2", color = Accent, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp))
         }
     }
 }
@@ -464,6 +496,7 @@ private fun HomeScreen(onSelect: (Module) -> Unit, reportExists: Boolean) {
             Triple(Module.BUSINESS, Icons.Default.Business, "بحث تجاري في الويب والخرائط"),
             Triple(Module.WHATSAPP, Icons.Default.Chat, "تحليل تصدير محادثة واتساب وبصمة الملف"),
             Triple(Module.DEVICE, Icons.Default.Devices, "توثيق حالة الهاتف المتضرر أو المقفل"),
+            Triple(Module.CUSTODY, Icons.Default.Description, "سجل محلي للأحداث وبصمات الأدلة"),
             Triple(Module.PRIVACY, Icons.Default.Security, "قائمة تدقيق لحماية حسابك وأجهزتك")
         )
         modules.forEach { (target, icon, desc) ->
