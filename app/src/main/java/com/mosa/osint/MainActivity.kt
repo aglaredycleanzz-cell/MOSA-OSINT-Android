@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -58,14 +59,39 @@ private data class SearchLink(val label: String, val url: String)
 private data class AnalysisResult(val heading: String, val lines: List<String>, val caution: String? = null)
 
 class MainActivity : ComponentActivity() {
+    private var incomingShareUri by mutableStateOf<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MosaApp() }
+        incomingShareUri = sharedUriFrom(intent)
+        setContent {
+            MosaApp(
+                sharedUri = incomingShareUri,
+                onSharedUriHandled = { incomingShareUri = null }
+            )
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        incomingShareUri = sharedUriFrom(intent)
+    }
+
+    private fun sharedUriFrom(source: Intent?): Uri? {
+        if (source?.action != Intent.ACTION_SEND) return null
+        val streamUri = if (Build.VERSION.SDK_INT >= 33) {
+            source.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            source.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+        }
+        return streamUri ?: source.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
     }
 }
 
 @Composable
-private fun MosaApp() {
+private fun MosaApp(sharedUri: Uri?, onSharedUriHandled: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("mosa_osint", Context.MODE_PRIVATE) }
     var module by remember { mutableStateOf(Module.HOME) }
@@ -135,6 +161,15 @@ private fun MosaApp() {
         consent = false
         if (next == Module.REPORT) {
             report = prefs.getString("last_report", "") ?: ""
+        }
+    }
+
+    LaunchedEffect(sharedUri) {
+        if (sharedUri != null) {
+            module = Module.WHATSAPP
+            input = ""
+            result = null
+            links = emptyList()
         }
     }
 
@@ -298,7 +333,11 @@ private fun MosaApp() {
                             }
                         }
                     }
-                    Module.WHATSAPP -> WhatsAppForensicsScreen(onReportGenerated = { text -> recordCaseEvent(text, "WhatsApp export analyzed") })
+                    Module.WHATSAPP -> WhatsAppForensicsScreen(
+                        sharedUri = sharedUri,
+                        onSharedUriHandled = onSharedUriHandled,
+                        onReportGenerated = { text -> recordCaseEvent(text, "WhatsApp export analyzed") }
+                    )
                     Module.DEVICE -> DeviceTriageScreen(onReportGenerated = { text -> recordCaseEvent(text, "Device triage documented") })
                     Module.CUSTODY -> ChainOfCustodyScreen(events = custodyLog, onCopy = { copyText(context, custodyLog) })
                     Module.PRIVACY -> PrivacyScreen(items = privacyItems, checked = checked) { index, value ->
