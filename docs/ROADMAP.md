@@ -15,14 +15,21 @@
 - Add a local event log for case reference, action, filename, timestamp, and source hash.
 - Build and verify the Android debug APK.
 
-## Release 1.3 — Structured evidence management
+## Release 1.3.0 — Android Sharesheet intake (implemented)
+- Accept user-initiated ACTION_SEND shares for TXT and ZIP export formats.
+- Open the WhatsApp analysis module when a supported file is shared to MOSA.
+- Display the shared source filename for examiner review.
+- Require case reference, authorization acknowledgement, and an explicit analyze action before processing.
+- Reuse the same bounded local parser and SHA-256 workflow as manual import.
+
+## Next planned — Structured evidence management
 - Replace the prototype preferences log with a structured encrypted case database.
 - Add examiner identity, acquisition method, source device details, and authorization record.
 - Add a signed, append-only evidence event ledger with integrity verification.
 - Add JSON/CSV evidence manifests and duplicate-file detection.
 - Add synthetic parser fixtures and automated regression tests.
 
-## Release 1.4 — Media and export expansion
+## Planned media and export expansion
 - Parse metadata available in selected media files without altering originals.
 - Add optional OCR on examiner-selected images, with explicit review of extracted text.
 - Correlate media filenames with export references when the format supports it.
