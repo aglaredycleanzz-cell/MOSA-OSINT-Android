@@ -71,7 +71,11 @@ private const val MAX_TOTAL_UNCOMPRESSED_BYTES = 400L * 1024L * 1024L
 private const val MAX_ZIP_ENTRIES = 2500
 
 @Composable
-fun WhatsAppForensicsScreen(onReportGenerated: (String) -> Unit) {
+fun WhatsAppForensicsScreen(
+    sharedUri: Uri? = null,
+    onSharedUriHandled: () -> Unit = {},
+    onReportGenerated: (String) -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var caseReference by remember { mutableStateOf("") }
@@ -80,25 +84,28 @@ fun WhatsAppForensicsScreen(onReportGenerated: (String) -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
+    fun analyzeUri(uri: Uri, cameFromShare: Boolean) {
+        busy = true
+        error = null
+        summary = null
+        scope.launch {
+            try {
+                summary = withContext(Dispatchers.IO) {
+                    analyzeSelectedWhatsAppExport(context, uri)
+                }
+            } catch (exception: Exception) {
+                error = exception.message ?: "تعذر تحليل الملف المحدد."
+            } finally {
+                busy = false
+                if (cameFromShare) onSharedUriHandled()
+            }
+        }
+    }
+
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        if (uri != null) {
-            busy = true
-            error = null
-            summary = null
-            scope.launch {
-                try {
-                    summary = withContext(Dispatchers.IO) {
-                        analyzeSelectedWhatsAppExport(context, uri)
-                    }
-                } catch (exception: Exception) {
-                    error = exception.message ?: "تعذر تحليل الملف المحدد."
-                } finally {
-                    busy = false
-                }
-            }
-        }
+        if (uri != null) analyzeUri(uri, cameFromShare = false)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -137,6 +144,30 @@ fun WhatsAppForensicsScreen(onReportGenerated: (String) -> Unit) {
                 color = ForensicsMuted, fontSize = 11.sp, lineHeight = 16.sp
             )
         }
+        if (sharedUri != null) {
+            Card(colors = CardDefaults.cardColors(containerColor = ForensicsPanelAlt), shape = RoundedCornerShape(12.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("وصل ملف عبر المشاركة إلى MOSA", color = ForensicsAccent, fontWeight = FontWeight.Bold)
+                    Text(
+                        queryDisplayName(context, sharedUri),
+                        color = Color.White, fontSize = 12.sp
+                    )
+                    Text(
+                        "لم يبدأ التحليل تلقائياً. راجع رقم القضية والتفويض، ثم اختر تحليل الملف صراحةً.",
+                        color = ForensicsMuted, fontSize = 11.sp, lineHeight = 16.sp
+                    )
+                    Button(
+                        onClick = { analyzeUri(sharedUri, cameFromShare = true) },
+                        enabled = authorized && caseReference.isNotBlank() && !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = ForensicsAccent, contentColor = Color(0xFF080D12)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("تحليل الملف الذي تمت مشاركته", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
         Button(
             onClick = { filePicker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) },
             enabled = authorized && caseReference.isNotBlank() && !busy,
@@ -146,7 +177,7 @@ fun WhatsAppForensicsScreen(onReportGenerated: (String) -> Unit) {
         ) {
             Icon(Icons.Default.FolderOpen, null)
             Spacer(Modifier.size(8.dp))
-            Text("اختيار ملف تصدير واتساب TXT أو ZIP", fontWeight = FontWeight.Bold)
+            Text("اختيار ملف تصدير واتساب من الملفات", fontWeight = FontWeight.Bold)
         }
         if (busy) {
             Row(verticalAlignment = Alignment.CenterVertically) {
