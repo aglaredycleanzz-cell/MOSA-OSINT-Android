@@ -79,14 +79,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun sharedUriFrom(source: Intent?): Uri? {
-        if (source?.action != Intent.ACTION_SEND) return null
+        val shareIntent = source ?: return null
+        if (shareIntent.action != Intent.ACTION_SEND) return null
         val streamUri = if (Build.VERSION.SDK_INT >= 33) {
-            source.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            shareIntent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
         } else {
             @Suppress("DEPRECATION")
-            source.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+            shareIntent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
         }
-        return streamUri ?: source.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
+        return streamUri ?: shareIntent.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri
     }
 }
 
