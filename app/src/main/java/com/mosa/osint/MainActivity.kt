@@ -47,6 +47,8 @@ private enum class Module(val title: String, val subtitle: String) {
     DOMAIN("النطاق", "معلومات النطاق العامة"),
     URL("تحليل الرابط", "فحص مؤشرات الروابط"),
     BUSINESS("الأعمال", "البحث عن بيانات الأعمال العامة"),
+    WHATSAPP("واتساب فورنزكس", "تحليل تصدير المحادثات محلياً"),
+    DEVICE("فحص الجهاز", "تقييم أولي للهاتف المضبوط"),
     PRIVACY("الخصوصية", "قائمة حماية حسابك"),
     REPORT("التقارير", "آخر نتيجة محفوظة")
 }
@@ -265,6 +267,8 @@ private fun MosaApp() {
                             }
                         }
                     }
+                    Module.WHATSAPP -> WhatsAppForensicsScreen(onReportGenerated = ::saveReport)
+                    Module.DEVICE -> DeviceTriageScreen(onReportGenerated = ::saveReport)
                     Module.PRIVACY -> PrivacyScreen(items = privacyItems, checked = checked) { index, value ->
                         checked[privacyItems[index]] = value
                         prefs.edit().putBoolean("privacy_$index", value).apply()
@@ -412,11 +416,11 @@ private fun Header() {
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("MOSA OSINT", fontWeight = FontWeight.Bold, fontSize = 23.sp)
-            Text("ANDROID INTELLIGENCE WORKSPACE", color = Muted, fontSize = 9.sp, letterSpacing = 1.sp)
+            Text("MOSA FORENSICS", fontWeight = FontWeight.Bold, fontSize = 23.sp)
+            Text("DIGITAL FORENSICS WORKSPACE", color = Muted, fontSize = 9.sp, letterSpacing = 1.sp)
         }
         Surface(color = Color(0xFF17332F), shape = RoundedCornerShape(50)) {
-            Text("v1.0", color = Accent, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp))
+            Text("v1.1", color = Accent, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp))
         }
     }
 }
@@ -445,9 +449,9 @@ private fun HomeScreen(onSelect: (Module) -> Unit, reportExists: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                Text("OPEN-SOURCE INTELLIGENCE", color = Accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                Text("حلّل المعلومات العامة، وتحقق من المؤشرات، واحتفظ بتقريرك.", fontSize = 19.sp, fontWeight = FontWeight.Bold, lineHeight = 27.sp)
-                Text("أدوات محلية وبحث يفتحه المستخدم بنفسه. لا اختراق، ولا تجاوز للخصوصية، ولا ادعاء بالوصول إلى بيانات واتساب المخفية.",
+                Text("DIGITAL FORENSICS & INTELLIGENCE", color = Accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("حلّل الأدلة الرقمية، ووثّق حالة الأجهزة، واحتفظ بتقارير قابلة للمراجعة.", fontSize = 19.sp, fontWeight = FontWeight.Bold, lineHeight = 27.sp)
+                Text("مساحة عمل للتحليل الجنائي الأولي والاستخبارات الرقمية. كل استيراد يتم باختيار المحقق، مع توثيق النطاق وحدود التحليل.",
                     color = Muted, fontSize = 12.sp, lineHeight = 19.sp)
             }
         }
@@ -458,6 +462,8 @@ private fun HomeScreen(onSelect: (Module) -> Unit, reportExists: Boolean) {
             Triple(Module.DOMAIN, Icons.Default.Language, "RDAP وسجلات شهادات TLS للنطاقات"),
             Triple(Module.URL, Icons.Default.Link, "مؤشرات محلية لاحتمالات الرابط المشبوه"),
             Triple(Module.BUSINESS, Icons.Default.Business, "بحث تجاري في الويب والخرائط"),
+            Triple(Module.WHATSAPP, Icons.Default.Chat, "تحليل تصدير محادثة واتساب وبصمة الملف"),
+            Triple(Module.DEVICE, Icons.Default.Devices, "توثيق حالة الهاتف المتضرر أو المقفل"),
             Triple(Module.PRIVACY, Icons.Default.Security, "قائمة تدقيق لحماية حسابك وأجهزتك")
         )
         modules.forEach { (target, icon, desc) ->
@@ -548,7 +554,7 @@ private fun SectionTitle(title: String, description: String) {
 @Composable
 private fun Footer() {
     Divider(color = Muted.copy(alpha = .18f))
-    Text("MOSA OSINT • يعمل محلياً ولا يتجاوز خصوصية الآخرين", color = Muted, fontSize = 10.sp,
+    Text("MOSA FORENSICS • Authorized Digital Forensics Workspace", color = Muted, fontSize = 10.sp,
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
 }
 
